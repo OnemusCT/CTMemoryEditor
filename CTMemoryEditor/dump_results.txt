@@ -1,0 +1,16 @@
+Attached! PID 39468, module 0x00DC0000, state at 0x0DBCF148, battle data at 0x0DBD01D8
+Editor reads Storyline: 24 (0x18)
+StateBase: 0xDBCF148
+BattleBase: 0xDBD01D8
+StoryBase: 0x0
+
+Scanning GameStateBase (0xDBCF148) for 0x12 ...
+Found 0x18 (24) at GameStateBase + 0x10000
+Found 0x18 (24) at GameStateBase + 0x10040
+Found 0x18 (24) at GameStateBase + 0x10080
+Found 0x18 (24) at GameStateBase + 0x100C0
+Found 0x18 (24) at GameStateBase + 0x101BF
+Found 0x18 (24) at GameStateBase + 0x101FF
+
+Scanning BattleDataBase (0xDBD01D8) for 0x12 ...
+Found 0x12 (18) at BattleDataBase + 0x110B0
