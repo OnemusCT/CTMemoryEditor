@@ -6,7 +6,7 @@
         xmlns:vm="clr-namespace:CTMemoryEditor.ViewModels"
         xmlns:conv="clr-namespace:CTMemoryEditor.Converters"
         mc:Ignorable="d"
-        Title="Chrono Trigger — Live Memory Editor"
+        Title="Chrono Trigger - Live Memory Editor"
         Height="720" Width="920" MinHeight="500" MinWidth="750"
         Background="#FF1E1E2E"
         d:DataContext="{d:DesignInstance vm:MainViewModel}">
@@ -229,7 +229,6 @@
     </Window.Resources>
 
     <DockPanel Margin="0">
-        <!-- Top bar -->
         <Border DockPanel.Dock="Top" Background="#FF181825" Padding="10,8">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
@@ -255,8 +254,6 @@
                 </StackPanel>
             </DockPanel>
         </Border>
-
-        <!-- Bottom bar: Battle Speed + Gold + Play Time + Party -->
         <Border DockPanel.Dock="Bottom" Background="#FF181825" Padding="10,8">
             <WrapPanel>
                 <TextBlock Text="Battle Speed:" Style="{StaticResource LabelText}" Margin="0,0,6,0"
@@ -320,18 +317,13 @@
             </WrapPanel>
         </Border>
 
-        <!-- Main content: tabs -->
         <TabControl Background="#FF1E1E2E" BorderThickness="0" Padding="0">
-
-            <!-- Tab 1: Characters -->
             <TabItem Header="Characters">
                 <Grid Background="#FF1E1E2E">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="140"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-
-                    <!-- Left: Character list -->
                     <Border Grid.Column="0" Background="#FF181825" Padding="4">
                         <ListBox ItemsSource="{Binding Characters}"
                                  SelectedItem="{Binding SelectedCharacter}"
@@ -345,14 +337,12 @@
                         </ListBox>
                     </Border>
 
-                    <!-- Right: Selected character detail -->
                     <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="16,8">
                         <StackPanel DataContext="{Binding SelectedCharacter}">
 
                             <TextBlock Text="{Binding Name}" FontSize="22" FontWeight="Bold"
                                        Foreground="#FF89B4FA" Margin="0,0,0,8"/>
 
-                            <!-- Level / XP -->
                             <TextBlock Text="Level &amp; Experience" Style="{StaticResource SectionHeader}"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -371,7 +361,6 @@
                                          Style="{StaticResource ReadOnlyBox}" Width="80"/>
                             </Grid>
 
-                            <!-- HP / MP -->
                             <TextBlock Text="HP / MP" Style="{StaticResource SectionHeader}"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -399,7 +388,6 @@
                                          Style="{StaticResource StatBox}"/>
                             </Grid>
 
-                            <!-- Base Stats -->
                             <TextBlock Text="Base Stats" Style="{StaticResource SectionHeader}"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -432,7 +420,6 @@
                                          Style="{StaticResource StatBox}"/>
                             </Grid>
 
-                            <!-- Computed Stats -->
                             <TextBlock Text="Computed Stats (with equipment)" Style="{StaticResource SectionHeader}"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -472,7 +459,6 @@
                                          Style="{StaticResource ReadOnlyBox}"/>
                             </Grid>
 
-                            <!-- Equipment -->
                             <TextBlock Text="Equipment" Style="{StaticResource SectionHeader}"/>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -519,10 +505,8 @@
                 </Grid>
             </TabItem>
 
-            <!-- Tab 2: Inventory -->
             <TabItem Header="Inventory">
                 <DockPanel Background="#FF1E1E2E" Margin="8">
-                    <!-- Toolbar -->
                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
                         <CheckBox IsChecked="{Binding ShowEmptySlots}" VerticalAlignment="Center"
                                   Foreground="#FFA6ADC8" FontSize="12" Content="Show empty slots" Margin="0,0,16,0"/>
@@ -532,7 +516,6 @@
 
                         <Separator Width="1" Background="#FF45475A" Margin="16,0"/>
 
-                        <!-- Add-item picker -->
                         <TextBlock Text="Category:" Style="{StaticResource LabelText}" Margin="0,0,6,0"/>
                         <ComboBox x:Name="CategoryCombo"
                                   Style="{StaticResource DarkCombo}"
@@ -562,7 +545,6 @@
                                 BorderBrush="#FFD4758A" Padding="12,4"/>
                     </StackPanel>
 
-                    <!-- Inventory grid -->
                     <DataGrid x:Name="InventoryGrid"
                               ItemsSource="{Binding InventorySlots}"
                               AutoGenerateColumns="False"

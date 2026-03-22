@@ -19,7 +19,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         SelectedCharacter = Characters[0];
 
-        // Party roster character options for combo boxes
         PartyCharacterOptions = new ObservableCollection<PartyOption>();
         for (int i = 0; i < GameOffsets.CharacterCount; i++)
             PartyCharacterOptions.Add(new PartyOption((byte)i, CharacterRecord.GetName(i)));
@@ -31,7 +30,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         TakeSnapshotCommand = new RelayCommand(OnTakeSnapshot, () => IsConnected);
         ApplySnapshotCommand = new RelayCommand(OnApplySnapshot, () => IsConnected && HasSnapshot);
 
-        // Seed category picker
         AvailableCategoryNames = new ObservableCollection<string>(ItemDatabase.CategoryNames);
         _pendingCategoryIndex = 0;
         RefreshPendingItems();
@@ -42,8 +40,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         };
         _refreshTimer.Tick += OnRefreshTick;
     }
-
-    // --- Connection state ---
 
     private bool _isConnected;
     public bool IsConnected
@@ -58,8 +54,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         get => _statusText;
         private set => SetProperty(ref _statusText, value);
     }
-
-    // --- Auto-refresh ---
 
     private bool _autoRefresh = true;
     public bool AutoRefresh
@@ -77,8 +71,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // --- Characters ---
-
     public ObservableCollection<CharacterViewModel> Characters { get; }
 
     private CharacterViewModel _selectedCharacter = null!;
@@ -87,8 +79,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         get => _selectedCharacter;
         set => SetProperty(ref _selectedCharacter, value);
     }
-
-    // --- Party Roster ---
 
     public ObservableCollection<PartyOption> PartyCharacterOptions { get; }
 
@@ -127,8 +117,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // --- Battle Speed ---
-
     public IReadOnlyList<int> BattleSpeedOptions { get; } = Enumerable.Range(1, 8).ToList();
 
     private int _battleSpeed = 1;
@@ -143,8 +131,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // --- Gold ---
-
     private uint _gold;
     private bool _suppressGoldWrite;
     public uint Gold
@@ -157,7 +143,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // --- Storyline ---
 
     private byte _storyline;
     private bool _suppressStorylineWrite;
@@ -205,8 +190,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         private set => SetProperty(ref _storylineBattleDataHex, value);
     }
 
-    // --- RNG Seed ---
-
     private bool _rngSeedAvailable;
     public bool RngSeedAvailable
     {
@@ -239,8 +222,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // --- Play Time ---
-
     private uint _playTimeSeconds;
     public uint PlayTimeSeconds
     {
@@ -264,8 +245,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // --- Inventory ---
-
     public ObservableCollection<InventorySlotViewModel> InventorySlots { get; } = new();
 
     private bool _showEmptySlots;
@@ -278,8 +257,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 RefreshInventoryView();
         }
     }
-
-    // --- Add-item picker state ---
 
     public ObservableCollection<string> AvailableCategoryNames { get; }
 
@@ -294,7 +271,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _pendingCategoryIndex, value))
             {
                 RefreshPendingItems();
-                PendingItem = null; // reset picker on category change
+                PendingItem = null;
             }
         }
     }
@@ -306,8 +283,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         set => SetProperty(ref _pendingItem, value);
     }
 
-    // --- Snapshot ---
-
     private GameSnapshot? _snapshot;
 
     public bool HasSnapshot => _snapshot != null;
@@ -316,7 +291,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ? $"Snapshot @ {_snapshot.CapturedAt:HH:mm:ss}"
         : "No snapshot";
 
-    // --- Commands ---
 
     public ICommand ConnectCommand { get; }
     public ICommand DisconnectCommand { get; }
@@ -348,7 +322,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         StatusText = "Disconnected.";
     }
 
-    // --- Refresh logic ---
 
     private void OnRefreshTick(object? sender, EventArgs e)
     {
@@ -365,7 +338,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
     private void RefreshAllData()
     {
-        // Characters
         for (int i = 0; i < GameOffsets.CharacterCount; i++)
         {
             CharacterRecord? record = _memory.ReadCharacter(i);
@@ -373,27 +345,22 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
                 Characters[i].UpdateFromRecord(record);
         }
 
-        // Battle speed
         _suppressBattleSpeedWrite = true;
         BattleSpeed = _memory.ReadBattleSpeed();
         _suppressBattleSpeedWrite = false;
 
-        // Gold
         _suppressGoldWrite = true;
         Gold = _memory.ReadGold();
         _suppressGoldWrite = false;
 
-        // Play time
         PlayTimeSeconds = _memory.ReadPlayTime();
 
-        // Storyline
         _suppressStorylineWrite = true;
         Storyline = _memory.ReadStoryline();
         StorylineGameStateHex = _memory.ReadStorylineGameState().ToString("X2");
         StorylineBattleDataHex = _memory.ReadStorylineBattleData().ToString("X2");
         _suppressStorylineWrite = false;
 
-        // Party roster
         _suppressPartyWrite = true;
         byte[] roster = _memory.ReadPartyRoster();
         PartySlot0 = roster[0];
@@ -401,15 +368,15 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         PartySlot2 = roster[2];
         _suppressPartyWrite = false;
 
-        // RNG Seed — retry finding the address each tick until rand() has been called
-        // (CT only calls rand() on room transitions / battle starts, so FLS slot 3
+        // RNG Seed - retry finding the address each tick until rand() has been called
+        // (CT only calls rand() on room transitions / battle starts / tech heals, so it
         // may be uninitialised at attach time).
         if (!_memory.IsRngSeedAvailable)
         {
             if (_memory.TryRefindRngSeed())
             {
                 RngSeedAvailable = true;
-                StatusText = $"RNG seed found: 0x{_memory.ReadRngSeed():X8}";
+                StatusText = $"RNG seed found: 0x{_memory.ReadRngSeed():X8}  [{_memory.RngDiagnostic}]";
             }
         }
 
@@ -421,7 +388,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             _suppressRngWrite = false;
         }
 
-        // Inventory
         RefreshInventoryView();
     }
 
@@ -431,12 +397,10 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         List<InventorySlot> allSlots = _memory.ReadAllInventory();
 
-        // Update existing or add/remove as needed
         List<InventorySlot> visibleSlots = _showEmptySlots
             ? allSlots
             : allSlots.Where(s => !s.IsEmpty).ToList();
 
-        // Resize collection to match
         while (InventorySlots.Count > visibleSlots.Count)
             InventorySlots.RemoveAt(InventorySlots.Count - 1);
 
@@ -466,8 +430,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    // --- Snapshot handlers ---
-
     private void OnTakeSnapshot()
     {
         GameSnapshot snap = new()
@@ -493,11 +455,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     {
         if (_snapshot == null) return;
 
-        // Characters
         for (int i = 0; i < GameOffsets.CharacterCount; i++)
             _memory.WriteCharacterRecord(i, _snapshot.Characters[i]);
 
-        // Party roster
         for (int i = 0; i < 3; i++)
             _memory.WritePartySlot(i, _snapshot.PartyRoster[i]);
 
@@ -514,7 +474,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             }
         }
 
-        // Global state
         _memory.WriteGold(_snapshot.Gold);
         _memory.WriteBattleSpeed(_snapshot.BattleSpeed);
         _memory.WriteStoryline(_snapshot.Storyline);
@@ -528,8 +487,6 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _refreshTimer.Stop();
         _memory.Dispose();
     }
-
-    // --- Add / Remove item handlers ---
 
     private void RefreshPendingItems()
     {
@@ -583,38 +540,5 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         {
             StatusText = "Failed to clear inventory slot.";
         }
-    }
-}
-
-
-/// <summary>
-/// Represents a selectable character for party roster combo boxes.
-/// </summary>
-public sealed class PartyOption
-{
-    public byte Id { get; }
-    public string Name { get; }
-
-    public PartyOption(byte id, string name)
-    {
-        Id = id;
-        Name = name;
-    }
-
-    public override string ToString() => Name;
-}
-
-/// <summary>
-/// Represents a selectable item in the Add-item picker.
-/// </summary>
-public sealed class ItemOption
-{
-    public byte Id { get; }
-    public string Name { get; }
-
-    public ItemOption(byte id, string name)
-    {
-        Id = id;
-        Name = name;
     }
 }

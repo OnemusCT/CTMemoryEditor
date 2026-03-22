@@ -5,17 +5,12 @@ namespace CTMemoryEditor.Models;
 /// </summary>
 public class CharacterRecord
 {
-    // Identity
     public byte CharacterId { get; set; }
-
-    // HP / MP
     public ushort HPMax { get; set; }
     public ushort HPCurrent { get; set; }
     public ushort MPMax { get; set; }
     public ushort MPCurrent { get; set; }
     public ushort HPBase { get; set; }
-
-    // Base stats
     public byte Strength { get; set; }
     public byte Stamina { get; set; }
     public byte Speed { get; set; }
@@ -23,19 +18,13 @@ public class CharacterRecord
     public byte Accuracy { get; set; }
     public byte Evasion { get; set; }
     public byte MagicDefense { get; set; }
-
-    // Level / XP
     public byte Level { get; set; }
     public uint TotalXP { get; set; }
     public ushort XPToNextLevel { get; set; }
-
-    // Equipment (encoded: category << 12 | item_index)
     public ushort Weapon { get; set; }
     public ushort Armor { get; set; }
     public ushort Helmet { get; set; }
     public ushort Accessory { get; set; }
-
-    // Computed stats (with equipment)
     public byte ComputedStrength { get; set; }
     public byte ComputedStamina { get; set; }
     public byte ComputedSpeed { get; set; }

@@ -23,8 +23,6 @@ public sealed class CharacterViewModel : ViewModelBase
     public string Name { get; }
     public int CharacterIndex => _charIndex;
 
-    // --- HP / MP ---
-
     private ushort _hpCurrent;
     public ushort HPCurrent
     {
@@ -79,8 +77,6 @@ public sealed class CharacterViewModel : ViewModelBase
                 _memory.WriteCharacterField(_charIndex, GameOffsets.Character.MPMax, value);
         }
     }
-
-    // --- Base Stats (write both base + computed) ---
 
     private byte _strength;
     public byte Strength
@@ -166,8 +162,6 @@ public sealed class CharacterViewModel : ViewModelBase
         }
     }
 
-    // --- Level / XP ---
-
     private byte _level;
     public byte Level
     {
@@ -196,8 +190,6 @@ public sealed class CharacterViewModel : ViewModelBase
         get => _xpToNextLevel;
         set => SetProperty(ref _xpToNextLevel, value); // read-only display
     }
-
-    // --- Computed Stats (read-only display) ---
 
     private byte _computedStrength;
     public byte ComputedStrength
@@ -261,8 +253,6 @@ public sealed class CharacterViewModel : ViewModelBase
         get => _defense;
         set => SetProperty(ref _defense, value);
     }
-
-    // --- Equipment ---
 
     private static readonly IReadOnlyList<EquipmentOption> _weaponOptions    = ItemDatabase.GetEquipmentOptions(0);
     private static readonly IReadOnlyList<EquipmentOption> _armorOptions     = ItemDatabase.GetEquipmentOptions(1);
