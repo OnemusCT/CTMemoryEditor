@@ -3,6 +3,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using CTMemoryEditor.Models;
 using CTMemoryEditor.Services;
+using Microsoft.Win32;
 
 namespace CTMemoryEditor.ViewModels;
 
@@ -29,6 +30,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         RemoveItemCommand = new RelayCommand<InventorySlotViewModel>(OnRemoveItem, vm => IsConnected && vm != null);
         TakeSnapshotCommand = new RelayCommand(OnTakeSnapshot, () => IsConnected);
         ApplySnapshotCommand = new RelayCommand(OnApplySnapshot, () => IsConnected && HasSnapshot);
+        SaveSnapshotCommand = new RelayCommand(OnSaveSnapshot, () => HasSnapshot);
+        LoadSnapshotCommand = new RelayCommand(OnLoadSnapshot);
 
         AvailableCategoryNames = new ObservableCollection<string>(ItemDatabase.CategoryNames);
         _pendingCategoryIndex = 0;
@@ -298,6 +301,8 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public ICommand RemoveItemCommand { get; }
     public ICommand TakeSnapshotCommand { get; }
     public ICommand ApplySnapshotCommand { get; }
+    public ICommand SaveSnapshotCommand { get; }
+    public ICommand LoadSnapshotCommand { get; }
 
     private void OnConnect()
     {
@@ -480,6 +485,54 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 
         StatusText = $"Snapshot from {_snapshot.CapturedAt:HH:mm:ss} applied.";
         RefreshAllData();
+    }
+
+    private void OnSaveSnapshot()
+    {
+        if (_snapshot == null) return;
+
+        SaveFileDialog dlg = new()
+        {
+            Title            = "Save Snapshot",
+            Filter           = "CT Snapshots (*.ctsnapshot)|*.ctsnapshot",
+            DefaultExt       = ".ctsnapshot",
+            FileName         = $"snapshot_{_snapshot.CapturedAt:yyyyMMdd_HHmmss}",
+        };
+
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            SnapshotFileService.Save(_snapshot, dlg.FileName);
+            StatusText = $"Snapshot saved to {System.IO.Path.GetFileName(dlg.FileName)}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Save failed: {ex.Message}";
+        }
+    }
+
+    private void OnLoadSnapshot()
+    {
+        OpenFileDialog dlg = new()
+        {
+            Title  = "Load Snapshot",
+            Filter = "CT Snapshots (*.ctsnapshot)|*.ctsnapshot",
+        };
+
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            _snapshot = SnapshotFileService.Load(dlg.FileName);
+            OnPropertyChanged(nameof(HasSnapshot));
+            OnPropertyChanged(nameof(SnapshotLabel));
+            StatusText = $"Snapshot loaded from {System.IO.Path.GetFileName(dlg.FileName)}.";
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Load failed: {ex.Message}";
+        }
     }
 
     public void Dispose()
