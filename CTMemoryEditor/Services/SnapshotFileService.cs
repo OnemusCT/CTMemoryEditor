@@ -53,6 +53,7 @@ public static class SnapshotFileService
             PartyRoster = snap.PartyRoster,
             Characters  = characters,
             Inventory   = inventory.ToArray(),
+            EventFlags  = snap.EventFlags,
         };
     }
 
@@ -98,6 +99,7 @@ public static class SnapshotFileService
             PartyRoster = dto.PartyRoster ?? new byte[3],
             Characters  = characters,
             Inventory   = allSlots,
+            EventFlags  = dto.EventFlags,
         };
     }
 
@@ -195,6 +197,7 @@ public static class SnapshotFileService
         public byte[]?     PartyRoster { get; set; }
         public CharacterDto[]?   Characters { get; set; }
         public InventorySlotDto[]? Inventory { get; set; }
+        public byte[]?     EventFlags { get; set; }
     }
 
     private sealed class CharacterDto

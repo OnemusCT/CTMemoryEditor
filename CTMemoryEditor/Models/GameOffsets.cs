@@ -8,9 +8,7 @@ public static class GameOffsets
 {
     // Process and base pointer
     public const string ProcessName = "Chrono Trigger";
-    public const uint GameDataPointer = 0x0041B4C4; // expanded game state object
-
-    // Character records: 7 slots, each 0x120 bytes
+    public const uint GameDataPointer = 0x0041B4C4;
     public const uint CharacterArrayBase = 0x10C0;
     public const uint CharacterStride = 0x120;
     public const int CharacterCount = 7;
@@ -57,19 +55,24 @@ public static class GameOffsets
     public const uint BattleSpeed = 0x10B4;
     
     // Live UI Config sync copy of Battle Speed in BattleData (updated by settings menu)
-    public const uint BattleSpeedExpanded = 0x13F94;
+    public const uint LiveBattleSpeed = 0x13F94;
+    public const uint Pc1EntityIdOffset = 0x1229C;
+    public const uint EntityArrayBase = 0x6940;
+    public const uint EntityStride = 0x154;
+    public const uint EntityXOffset = 0x84;
+    public const uint EntityYOffset = 0x90;
 
     // Storyline counter: gameStateBase+0x10000 (low byte only).
     // The PC engine emulates SNES WRAM directly using a dense byte array:
     // 0x00000..0x0FFFF = SNES 7E0000..7EFFFF (Work RAM)
     // 0x10000..0x1FFFF = SNES 7F0000..7FFFFF (Save RAM / Event flags)
     // The Room Scripting Engine pulls the live Storyline Counter from 0x10000 (SNES 7F0000).
-    // (Note: The sparsely packed uint32 array at 0x0800 ONLY syncs to this live array during load/save).
-    public const uint StorylineCounter = 0x10000;
+    public const uint SceneStorylineCounter = 0x10000;
+    public const uint LiveEventFlagsBase = 0x110B0;
 
     // On room transitions this copy overwrites StorylineCounter, overwriting any in-session patch.
     // WriteStoryline must therefore update both locations simultaneously.
-    public const uint StorylineCounterExpanded = 0x110b0;
+    public const uint LiveStorylineCounter = 0x110b0;
     public const uint InventoryBase = 0x18A0;
     public const uint InventorySlotSize = 12;
     public const int InventorySlotCount = 347;
@@ -95,13 +98,13 @@ public static class GameOffsets
 
 
     // Party roster - game state (save/load source of truth)
-    public static readonly uint[] PartySlots = [0x28E4, 0x28E8, 0x28EC];
+    public static readonly uint[] SavePartySlots = [0x28E4, 0x28E8, 0x28EC];
 
     // Party roster - expanded battle data (active runtime copy, read/write from here)
     // Written by SNES event-script opcode 0x2D at runtime whenever the
     // active party changes.
-    public static readonly uint[] BattlePartySlots = [0x1324c, 0x13250, 0x13254];
+    public static readonly uint[] LivePartySlots = [0x1324c, 0x13250, 0x13254];
 
     // Party roster - load-time snapshot
-    public static readonly uint[] BattlePartySlotSnapshots = [0x1854, 0x1858, 0x185C];
+    public static readonly uint[] LivePartySlotSnapshots = [0x1854, 0x1858, 0x185C];
 }

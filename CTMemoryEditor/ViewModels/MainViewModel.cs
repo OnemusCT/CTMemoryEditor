@@ -11,6 +11,13 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
 {
     private readonly GameMemoryService _memory = new();
     private readonly DispatcherTimer _refreshTimer;
+    private readonly TreasureDataService _treasureDataService;
+    private readonly EventFlagDefinitionService _eventFlagsService = new();
+    private bool _isRefreshingTreasures;
+
+    public ObservableCollection<TreasureChest> Treasures { get; } = new();
+    public ObservableCollection<EventVariableViewModel> EventVariables { get; } = new();
+    public ObservableCollection<EventFlagViewModel> EventFlags { get; } = new();
 
     public MainViewModel()
     {
@@ -32,10 +39,30 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         ApplySnapshotCommand = new RelayCommand(OnApplySnapshot, () => IsConnected && HasSnapshot);
         SaveSnapshotCommand = new RelayCommand(OnSaveSnapshot, () => HasSnapshot);
         LoadSnapshotCommand = new RelayCommand(OnLoadSnapshot);
+        WarpCommand = new RelayCommand(OnWarp, () => IsConnected);
 
         AvailableCategoryNames = new ObservableCollection<string>(ItemDatabase.CategoryNames);
         _pendingCategoryIndex = 0;
         RefreshPendingItems();
+
+        _treasureDataService = new TreasureDataService();
+        foreach (var chest in _treasureDataService.LoadChests())
+        {
+            chest.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(TreasureChest.IsOpened) && !_isRefreshingTreasures)
+                {
+                    _memory.WriteChestOpened(chest.GlobalIndex, chest.IsOpened);
+                }
+            };
+            Treasures.Add(chest);
+        }
+
+        foreach (var v in _eventFlagsService.GetKnownVariables())
+            EventVariables.Add(new EventVariableViewModel(_memory, v));
+
+        foreach (var f in _eventFlagsService.GetKnownFlags())
+            EventFlags.Add(new EventFlagViewModel(_memory, f));
 
         _refreshTimer = new DispatcherTimer
         {
@@ -193,6 +220,20 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         private set => SetProperty(ref _storylineBattleDataHex, value);
     }
 
+    private ushort _pc1X;
+    public ushort Pc1X
+    {
+        get => _pc1X;
+        private set => SetProperty(ref _pc1X, value);
+    }
+
+    private ushort _pc1Y;
+    public ushort Pc1Y
+    {
+        get => _pc1Y;
+        private set => SetProperty(ref _pc1Y, value);
+    }
+
     private bool _rngSeedAvailable;
     public bool RngSeedAvailable
     {
@@ -303,6 +344,28 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
     public ICommand ApplySnapshotCommand { get; }
     public ICommand SaveSnapshotCommand { get; }
     public ICommand LoadSnapshotCommand { get; }
+    public ICommand WarpCommand { get; }
+
+    private string _warpLocationHex = "02";
+    public string WarpLocationHex
+    {
+        get => _warpLocationHex;
+        set => SetProperty(ref _warpLocationHex, value);
+    }
+
+    private string _warpXHex = "17";
+    public string WarpXHex
+    {
+        get => _warpXHex;
+        set => SetProperty(ref _warpXHex, value);
+    }
+
+    private string _warpYHex = "08";
+    public string WarpYHex
+    {
+        get => _warpYHex;
+        set => SetProperty(ref _warpYHex, value);
+    }
 
     private void OnConnect()
     {
@@ -325,6 +388,25 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _memory.Detach();
         IsConnected = false;
         StatusText = "Disconnected.";
+    }
+
+    private void OnWarp()
+    {
+        if (byte.TryParse(WarpLocationHex, System.Globalization.NumberStyles.HexNumber, null, out byte loc) &&
+            byte.TryParse(WarpXHex, System.Globalization.NumberStyles.HexNumber, null, out byte x) &&
+            byte.TryParse(WarpYHex, System.Globalization.NumberStyles.HexNumber, null, out byte y))
+        {
+            _memory.WriteSnesByte(0x118b0, loc);
+            _memory.WriteSnesByte(0x118b8, x);
+            _memory.WriteSnesByte(0x118c0, y);
+            _memory.WriteSnesByte(0x118c8, 0x00);
+            _memory.WriteSnesByte(0x11134, 0x01);
+            StatusText = $"Warped to Location {loc:X2} at ({x:X2}, {y:X2})";
+        }
+        else
+        {
+            StatusText = "Invalid warp coordinates (must be hex bytes).";
+        }
     }
 
 
@@ -366,6 +448,9 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         StorylineBattleDataHex = _memory.ReadStorylineBattleData().ToString("X2");
         _suppressStorylineWrite = false;
 
+        Pc1X = _memory.ReadPc1X();
+        Pc1Y = _memory.ReadPc1Y();
+
         _suppressPartyWrite = true;
         byte[] roster = _memory.ReadPartyRoster();
         PartySlot0 = roster[0];
@@ -394,6 +479,16 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         }
 
         RefreshInventoryView();
+
+        _isRefreshingTreasures = true;
+        foreach (var chest in Treasures)
+        {
+            chest.IsOpened = _memory.ReadChestOpened(chest.GlobalIndex);
+        }
+        _isRefreshingTreasures = false;
+
+        foreach (var v in EventVariables) v.Refresh();
+        foreach (var f in EventFlags) f.Refresh();
     }
 
     private void RefreshInventoryView()
@@ -445,6 +540,7 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
             Gold        = _memory.ReadGold(),
             BattleSpeed = _memory.ReadBattleSpeed(),
             Storyline   = _memory.ReadStoryline(),
+            EventFlags  = _memory.ReadAllEventFlags(),
         };
 
         for (int i = 0; i < GameOffsets.CharacterCount; i++)
@@ -482,6 +578,11 @@ public sealed class MainViewModel : ViewModelBase, IDisposable
         _memory.WriteGold(_snapshot.Gold);
         _memory.WriteBattleSpeed(_snapshot.BattleSpeed);
         _memory.WriteStoryline(_snapshot.Storyline);
+
+        if (_snapshot.EventFlags != null && _snapshot.EventFlags.Length == 512)
+        {
+            _memory.WriteAllEventFlags(_snapshot.EventFlags);
+        }
 
         StatusText = $"Snapshot from {_snapshot.CapturedAt:HH:mm:ss} applied.";
         RefreshAllData();

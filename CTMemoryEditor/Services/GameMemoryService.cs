@@ -497,7 +497,7 @@ public sealed class GameMemoryService : IDisposable
         {
             // Read from expanded battle data - this is what the game uses at runtime.
             // Game state (0x28E4+) is only the save/load copy and may be stale.
-            roster[i] = (byte)(ReadUInt32(_gameDataPtr + GameOffsets.BattlePartySlots[i]) & 0xFF);
+            roster[i] = (byte)(ReadUInt32(_gameDataPtr + GameOffsets.LivePartySlots[i]) & 0xFF);
         }
         return roster;
     }
@@ -508,11 +508,11 @@ public sealed class GameMemoryService : IDisposable
             return false;
 
         // Primary live copy - drives active gameplay (updated by SNES script opcode 0x2D).
-        bool ok = WriteUInt32(_gameDataPtr + GameOffsets.BattlePartySlots[slotIndex], characterId);
+        bool ok = WriteUInt32(_gameDataPtr + GameOffsets.LivePartySlots[slotIndex], characterId);
         // Load-time snapshot - kept in sync so FUN_00312c80 saves the right party.
-        ok &= WriteUInt32(_gameDataPtr + GameOffsets.BattlePartySlotSnapshots[slotIndex], characterId);
+        ok &= WriteUInt32(_gameDataPtr + GameOffsets.LivePartySlotSnapshots[slotIndex], characterId);
         // Save-struct copy in game state - source for the serializer on save.
-        ok &= WriteUInt32(_snesDataPtr + GameOffsets.PartySlots[slotIndex], characterId);
+        ok &= WriteUInt32(_snesDataPtr + GameOffsets.SavePartySlots[slotIndex], characterId);
         return ok;
     }
 
@@ -610,6 +610,21 @@ public sealed class GameMemoryService : IDisposable
         return WriteUInt32(_snesDataPtr + GameOffsets.Gold, value);
     }
 
+    /// <summary>
+    /// Writes a single byte into the dense SNES RAM image at the given offset from gameStateBase.
+    /// Use (snesAddr - 0x7E0000) as the offset (e.g. SNES 7F0200 -> offset 0x10200).
+    /// Performs a read-modify-write so only the target byte is affected.
+    /// </summary>
+    public bool WriteSnesByte(uint snesOffset, byte value)
+    {
+        if (!IsAttached) return false;
+        uint addr = _gameDataPtr + snesOffset;
+        if (!NativeMethods.ReadProcessMemory(_processHandle, (IntPtr)addr, out uint current, 4, out _))
+            return false;
+        uint newVal = (current & 0xFFFFFF00) | value;
+        return NativeMethods.WriteProcessMemory(_processHandle, (IntPtr)addr, in newVal, 4, out _);
+    }
+
     public uint ReadPlayTime()
     {
         return ReadUInt32(_snesDataPtr + GameOffsets.PlayTime);
@@ -618,14 +633,14 @@ public sealed class GameMemoryService : IDisposable
     // Returns 1–8 (user-facing). Stored in memory as 0–7.
     public int ReadBattleSpeed()
     {
-        return (int)(ReadUInt32(_gameDataPtr + GameOffsets.BattleSpeedExpanded) & 0xFF) + 1;
+        return (int)(ReadUInt32(_gameDataPtr + GameOffsets.LiveBattleSpeed) & 0xFF) + 1;
     }
 
     public bool WriteBattleSpeed(int value)
     {
         uint stored = (uint)Math.Clamp(value - 1, 0, 7);
-        uint currentExp = ReadUInt32(_gameDataPtr + GameOffsets.BattleSpeedExpanded);
-        bool ok = WriteUInt32(_gameDataPtr + GameOffsets.BattleSpeedExpanded, (currentExp & 0xFFFFFF00) | stored);
+        uint currentExp = ReadUInt32(_gameDataPtr + GameOffsets.LiveBattleSpeed);
+        bool ok = WriteUInt32(_gameDataPtr + GameOffsets.LiveBattleSpeed, (currentExp & 0xFFFFFF00) | stored);
 
         uint current = ReadUInt32(_snesDataPtr + GameOffsets.BattleSpeed);
         uint newVal = (current & 0xFFFFFF00) | stored;
@@ -639,17 +654,125 @@ public sealed class GameMemoryService : IDisposable
     /// </summary>
     public byte ReadStoryline()
     {
-        return (byte)(ReadUInt32(_gameDataPtr + GameOffsets.StorylineCounterExpanded) & 0xFF);
+        return (byte)(ReadUInt32(_gameDataPtr + GameOffsets.LiveStorylineCounter) & 0xFF);
     }
 
     public byte ReadStorylineGameState()
     {
-        return (byte)(ReadUInt32(_snesDataPtr + GameOffsets.StorylineCounter) & 0xFF);
+        return (byte)(ReadUInt32(_snesDataPtr + GameOffsets.SceneStorylineCounter) & 0xFF);
     }
 
     public byte ReadStorylineBattleData()
     {
-        return (byte)(ReadUInt32(_gameDataPtr + GameOffsets.StorylineCounterExpanded) & 0xFF);
+        return (byte)(ReadUInt32(_gameDataPtr + GameOffsets.LiveStorylineCounter) & 0xFF);
+    }
+
+    public byte ReadEventByte(int byteIndex)
+    {
+        if (_gameDataPtr == 0) return 0;
+        uint dwordOffset = GameOffsets.LiveEventFlagsBase + (uint)(byteIndex * 4);
+        return (byte)(ReadUInt32(_gameDataPtr + dwordOffset) & 0xFF);
+    }
+
+    public void WriteEventByte(int byteIndex, byte value)
+    {
+        if (_gameDataPtr == 0) return;
+        uint dwordOffset = GameOffsets.LiveEventFlagsBase + (uint)(byteIndex * 4);
+        uint current = ReadUInt32(_gameDataPtr + dwordOffset);
+        uint newVal = (current & 0xFFFFFF00) | value;
+        WriteUInt32(_gameDataPtr + dwordOffset, newVal);
+    }
+
+    public bool ReadEventBit(int byteIndex, byte bitMask)
+    {
+        byte val = ReadEventByte(byteIndex);
+        return (val & bitMask) != 0;
+    }
+
+    public void WriteEventBit(int byteIndex, byte bitMask, bool isSet)
+    {
+        byte current = ReadEventByte(byteIndex);
+        if (isSet)
+            current |= bitMask;
+        else
+            current = (byte)(current & ~bitMask);
+        WriteEventByte(byteIndex, current);
+    }
+
+    public byte[] ReadAllEventFlags()
+    {
+        byte[] flags = new byte[512];
+        if (_gameDataPtr == 0) return flags;
+        
+        uint dwordOffset = GameOffsets.LiveEventFlagsBase;
+        byte[] rawData = new byte[2048];
+        if (!NativeMethods.ReadProcessMemoryBulk(_processHandle, (IntPtr)(_gameDataPtr + dwordOffset), rawData, 2048, out _))
+            return flags;
+            
+        for (int i = 0; i < 512; i++)
+        {
+            flags[i] = rawData[i * 4];
+        }
+        return flags;
+    }
+
+    public void WriteAllEventFlags(byte[] flags)
+    {
+        if (_gameDataPtr == 0 || flags == null || flags.Length != 512) return;
+        
+        uint dwordOffset = GameOffsets.LiveEventFlagsBase;
+        byte[] rawData = new byte[2048];
+        if (!NativeMethods.ReadProcessMemoryBulk(_processHandle, (IntPtr)(_gameDataPtr + dwordOffset), rawData, 2048, out _))
+            return;
+            
+        for (int i = 0; i < 512; i++)
+        {
+            rawData[i * 4] = flags[i];
+        }
+        
+        NativeMethods.WriteProcessMemoryBulk(_processHandle, (IntPtr)(_gameDataPtr + dwordOffset), rawData, 2048, out _);
+    }
+
+    public bool ReadChestOpened(int globalIndex)
+    {
+        if (_gameDataPtr == 0) return false;
+        int bitPos = globalIndex + 8; // Chest tracking starts 8 bits after storyline counter
+        uint dwordOffset = GameOffsets.LiveEventFlagsBase + (uint)(bitPos / 8) * 4;
+        int bitNum = bitPos % 8;
+        uint val = ReadUInt32(_gameDataPtr + dwordOffset);
+        return ((val >> bitNum) & 1) == 1;
+    }
+
+    public void WriteChestOpened(int globalIndex, bool isOpened)
+    {
+        if (_gameDataPtr == 0) return;
+        int bitPos = globalIndex + 8;
+        uint dwordOffset = GameOffsets.LiveEventFlagsBase + (uint)(bitPos / 8) * 4;
+        int bitNum = bitPos % 8;
+
+        uint current = ReadUInt32(_gameDataPtr + dwordOffset);
+        if (isOpened)
+            current |= (1u << bitNum);
+        else
+            current &= ~(1u << bitNum);
+
+        WriteUInt32(_gameDataPtr + dwordOffset, current);
+    }
+
+    public ushort ReadPc1X()
+    {
+        uint pc1EntityId = ReadUInt32(_gameDataPtr + GameOffsets.Pc1EntityIdOffset);
+        uint entityIndex = pc1EntityId >> 1;
+        uint entityPtr = _gameDataPtr + GameOffsets.EntityArrayBase + (entityIndex * GameOffsets.EntityStride);
+        return (ushort)((ReadUInt32(entityPtr + GameOffsets.EntityXOffset) & 0xFFFF) >> 8);
+    }
+
+    public ushort ReadPc1Y()
+    {
+        uint pc1EntityId = ReadUInt32(_gameDataPtr + GameOffsets.Pc1EntityIdOffset);
+        uint entityIndex = pc1EntityId >> 1;
+        uint entityPtr = _gameDataPtr + GameOffsets.EntityArrayBase + (entityIndex * GameOffsets.EntityStride);
+        return (ushort)((ReadUInt32(entityPtr + GameOffsets.EntityYOffset) & 0xFFFF) >> 8);
     }
 
     /// <summary>
@@ -660,12 +783,12 @@ public sealed class GameMemoryService : IDisposable
     public bool WriteStoryline(byte value)
     {
         // Primary: dense SNES WRAM byte at SNESDataPointer+0x10000
-        uint current = ReadUInt32(_snesDataPtr + GameOffsets.StorylineCounter);
+        uint current = ReadUInt32(_snesDataPtr + GameOffsets.SceneStorylineCounter);
         uint newVal = (current & 0xFFFFFF00) | value;
-        bool ok = WriteUInt32(_snesDataPtr + GameOffsets.StorylineCounter, newVal);
+        bool ok = WriteUInt32(_snesDataPtr + GameOffsets.SceneStorylineCounter, newVal);
 
         // Mirror 1: expanded DWORD at GameDataPointer+0x110b0 (zero-extended byte)
-        ok &= WriteUInt32(_gameDataPtr + GameOffsets.StorylineCounterExpanded, value);
+        ok &= WriteUInt32(_gameDataPtr + GameOffsets.LiveStorylineCounter, value);
 
         return ok;
     }

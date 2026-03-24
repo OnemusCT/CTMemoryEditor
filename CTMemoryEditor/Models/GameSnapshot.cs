@@ -20,4 +20,7 @@ public class GameSnapshot
     public uint Gold { get; set; }
     public int BattleSpeed { get; set; }
     public byte Storyline { get; set; }
+
+    /// <summary>Raw 512-byte array containing SNES WRAM 7F0000 - 7F01FF</summary>
+    public byte[]? EventFlags { get; set; }
 }

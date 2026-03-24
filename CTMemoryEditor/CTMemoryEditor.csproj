@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Data\sfc_item.txt" />
+    <EmbeddedResource Include="Data\TakaraOffsetTbl.dat" />
+    <EmbeddedResource Include="Data\TakaraDataTbl.dat" />
   </ItemGroup>
 
 </Project>

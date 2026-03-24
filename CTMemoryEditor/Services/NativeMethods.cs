@@ -73,6 +73,15 @@ internal static partial class NativeMethods
         nuint nSize,
         out nuint lpNumberOfBytesWritten);
 
+    [LibraryImport("kernel32.dll", SetLastError = true, EntryPoint = "WriteProcessMemory")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool WriteProcessMemoryBulk(
+        IntPtr hProcess,
+        IntPtr lpBaseAddress,
+        [In] byte[] lpBuffer,
+        nuint nSize,
+        out nuint lpNumberOfBytesWritten);
+
     // For enumerating virtual memory regions
     [LibraryImport("kernel32.dll", SetLastError = true)]
     public static partial nuint VirtualQueryEx(

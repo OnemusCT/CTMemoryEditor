@@ -233,7 +233,20 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <Button Content="Connect" Command="{Binding ConnectCommand}" Margin="0,0,6,0"/>
-                    <Button Content="Disconnect" Command="{Binding DisconnectCommand}" Margin="0,0,12,0"/>
+                    <Button Content="Disconnect" Command="{Binding DisconnectCommand}" Margin="0,0,6,0"/>
+                    <TextBlock Text="Loc (Hex):" Style="{StaticResource LabelText}"/>
+                    <TextBox Text="{Binding WarpLocationHex, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource StatBox}" Width="30" Margin="0,0,6,0" ToolTip="Location ID (Hex)"/>
+                    <TextBlock Text="X:" Style="{StaticResource LabelText}"/>
+                    <TextBox Text="{Binding WarpXHex, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource StatBox}" Width="30" Margin="0,0,6,0" ToolTip="X Coordinate (Hex)"/>
+                    <TextBlock Text="Y:" Style="{StaticResource LabelText}"/>
+                    <TextBox Text="{Binding WarpYHex, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource StatBox}" Width="30" Margin="0,0,6,0" ToolTip="Y Coordinate (Hex)"/>
+                    <Button Content="Warp" Command="{Binding WarpCommand}"
+                            Background="#FFF9E2AF" Foreground="#FF1E1E2E"
+                            BorderBrush="#FFE0C890" Margin="0,0,12,0"
+                            ToolTip="Warp to specified Location, X, Y"/>
                     <Button Content="Take Snapshot"
                             Command="{Binding TakeSnapshotCommand}"
                             Background="#FF89B4FA" Foreground="#FF1E1E2E"
@@ -294,6 +307,11 @@
                          Style="{StaticResource StatBox}" Width="30" Margin="0,0,2,0"
                          Foreground="#FF89DCEB" Background="#FF313244" ToolTip="BattleData (True Value)"/>
                 <TextBlock Text=")" Style="{StaticResource LabelText}" Margin="0,0,20,0" Foreground="#FF6C7086"/>
+
+                <TextBlock Text="PC1 X/Y:" Style="{StaticResource LabelText}" Margin="0,0,6,0"/>
+                <TextBox Text="{Binding Pc1X, Mode=OneWay, StringFormat=X2}" Style="{StaticResource ReadOnlyBox}" Width="35" Margin="0,0,2,0" ToolTip="Tile X (Hex)"/>
+                <TextBlock Text="," Style="{StaticResource LabelText}" Margin="0,0,2,0" Foreground="#FF6C7086"/>
+                <TextBox Text="{Binding Pc1Y, Mode=OneWay, StringFormat=X2}" Style="{StaticResource ReadOnlyBox}" Width="35" Margin="0,0,20,0" ToolTip="Tile Y (Hex)"/>
 
                 <TextBlock Text="RNG Seed:" Style="{StaticResource LabelText}" Margin="0,0,6,0"
                            Visibility="{Binding RngSeedAvailable, Converter={StaticResource BoolToVisibility}}"
@@ -592,6 +610,124 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Treasures">
+                <DockPanel Background="#FF1E1E2E" Margin="8">
+                    <DataGrid ItemsSource="{Binding Treasures}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False" CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              IsReadOnly="False"
+                              SelectionMode="Single"
+                              Background="#FF1E1E2E"
+                              RowBackground="#FF1E1E2E"
+                              AlternatingRowBackground="#FF181825"
+                              Foreground="#FFCDD6F4"
+                              BorderBrush="#FF45475A"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#FF313244"
+                              HeadersVisibility="Column"
+                              FontSize="13"
+                              FontFamily="Consolas"
+                              ColumnHeaderHeight="28">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#FF313244"/>
+                                <Setter Property="Foreground" Value="#FFA6ADC8"/>
+                                <Setter Property="Padding" Value="8,4"/>
+                                <Setter Property="BorderBrush" Value="#FF45475A"/>
+                                <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="MapID" Binding="{Binding MapId}" IsReadOnly="True" Width="60"/>
+                            <DataGridTextColumn Header="ChestIdx" Binding="{Binding GlobalIndex}" IsReadOnly="True" Width="80"/>
+                            <DataGridTextColumn Header="Category" Binding="{Binding Category}" IsReadOnly="True" Width="80"/>
+                            <DataGridTextColumn Header="Contents" Binding="{Binding ItemName}" IsReadOnly="True" Width="*"/>
+                            <DataGridCheckBoxColumn Header="Opened" Binding="{Binding IsOpened, UpdateSourceTrigger=PropertyChanged}" Width="70">
+                                <DataGridCheckBoxColumn.ElementStyle>
+                                    <Style TargetType="CheckBox">
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Setter Property="VerticalAlignment" Value="Center"/>
+                                    </Style>
+                                </DataGridCheckBoxColumn.ElementStyle>
+                            </DataGridCheckBoxColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
+            <TabItem Header="Event Flags">
+                <Grid Background="#FF1E1E2E" Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="1.5*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <DockPanel Grid.Column="0">
+                        <TextBlock DockPanel.Dock="Top" Text="Event Variables (Full Bytes)" Style="{StaticResource SectionHeader}" Margin="0,0,0,8"/>
+                        <DataGrid ItemsSource="{Binding EventVariables}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  IsReadOnly="False" SelectionMode="Single" Background="#FF1E1E2E"
+                                  RowBackground="#FF1E1E2E" AlternatingRowBackground="#FF181825"
+                                  Foreground="#FFCDD6F4" BorderBrush="#FF45475A" GridLinesVisibility="Horizontal"
+                                  HorizontalGridLinesBrush="#FF313244" HeadersVisibility="Column"
+                                  FontSize="13" FontFamily="Consolas" ColumnHeaderHeight="28">
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="#FF313244"/>
+                                    <Setter Property="Foreground" Value="#FFA6ADC8"/>
+                                    <Setter Property="Padding" Value="8,4"/>
+                                    <Setter Property="BorderBrush" Value="#FF45475A"/>
+                                    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Offset" Binding="{Binding HexOffset}" IsReadOnly="True" Width="80"/>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" IsReadOnly="True" Width="*"/>
+                                <DataGridTextColumn Header="Val" Binding="{Binding Value, UpdateSourceTrigger=LostFocus}" Width="60"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <TextBlock DockPanel.Dock="Top" Text="Known Event Flags (Bits)" Style="{StaticResource SectionHeader}" Margin="0,0,0,8"/>
+                        <DataGrid ItemsSource="{Binding EventFlags}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  IsReadOnly="False" SelectionMode="Single" Background="#FF1E1E2E"
+                                  RowBackground="#FF1E1E2E" AlternatingRowBackground="#FF181825"
+                                  Foreground="#FFCDD6F4" BorderBrush="#FF45475A" GridLinesVisibility="Horizontal"
+                                  HorizontalGridLinesBrush="#FF313244" HeadersVisibility="Column"
+                                  FontSize="13" FontFamily="Consolas" ColumnHeaderHeight="28">
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="#FF313244"/>
+                                    <Setter Property="Foreground" Value="#FFA6ADC8"/>
+                                    <Setter Property="Padding" Value="8,4"/>
+                                    <Setter Property="BorderBrush" Value="#FF45475A"/>
+                                    <Setter Property="BorderThickness" Value="0,0,1,1"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Offset" Binding="{Binding HexOffset}" IsReadOnly="True" Width="120"/>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" IsReadOnly="True" Width="*"/>
+                                <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsSet, UpdateSourceTrigger=PropertyChanged}" Width="60">
+                                    <DataGridCheckBoxColumn.ElementStyle>
+                                        <Style TargetType="CheckBox">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridCheckBoxColumn.ElementStyle>
+                                </DataGridCheckBoxColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Grid>
             </TabItem>
         </TabControl>
     </DockPanel>
